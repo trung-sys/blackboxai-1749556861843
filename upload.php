@@ -28,12 +28,18 @@ try {
 
         // Check for upload errors
         if ($file['error'] !== UPLOAD_ERR_OK) {
-            throw new Exception('Có lỗi xảy ra khi tải file lên.');
+            error_log('Upload error code: ' . $file['error']);
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Có lỗi xảy ra khi tải file lên.']);
+            exit;
         }
 
         // Validate file type
         if (!isValidFileType($file)) {
-            throw new Exception('Chỉ chấp nhận file ảnh (jpg, png, gif, webp) hoặc video (mp4, mov, avi, wmv).');
+            error_log('Invalid file type: ' . $file['type']);
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Chỉ chấp nhận file ảnh (jpg, png, gif, webp) hoặc video (mp4, mov, avi, wmv).']);
+            exit;
         }
 
         // Check if file is image or video
@@ -41,10 +47,16 @@ try {
 
         // Check file size
         if ($isImage && $file['size'] > MAX_IMAGE_SIZE) {
-            throw new Exception('Kích thước ảnh không được vượt quá 5MB.');
+            error_log('Image size too large: ' . $file['size']);
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Kích thước ảnh không được vượt quá 5MB.']);
+            exit;
         }
         if (!$isImage && $file['size'] > MAX_VIDEO_SIZE) {
-            throw new Exception('Kích thước video không được vượt quá 15MB.');
+            error_log('Video size too large: ' . $file['size']);
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Kích thước video không được vượt quá 15MB.']);
+            exit;
         }
 
         // Generate unique filename
@@ -53,7 +65,10 @@ try {
 
         // Move uploaded file
         if (!move_uploaded_file($file['tmp_name'], $uploadPath)) {
-            throw new Exception('Không thể lưu file.');
+            error_log('Failed to move uploaded file.');
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => 'Không thể lưu file.']);
+            exit;
         }
 
         // Generate public URL
@@ -90,10 +105,10 @@ try {
     ], JSON_UNESCAPED_UNICODE);
 
 } catch (Exception $e) {
-    // Return error response
-    http_response_code(400);
+    error_log('Exception: ' . $e->getMessage());
+    http_response_code(500);
     echo json_encode([
         'success' => false,
-        'message' => $e->getMessage()
+        'message' => 'Lỗi máy chủ nội bộ. Vui lòng thử lại sau.'
     ], JSON_UNESCAPED_UNICODE);
 }
