@@ -212,7 +212,11 @@
             <div id="localUpload" class="p-6">
                 <div class="drop-zone w-full p-12 rounded-xl text-center cursor-pointer">
                     <form id="uploadForm" enctype="multipart/form-data">
-                        <input type="file" id="fileInput" name="files[]" multiple accept="image/*,video/*" class="hidden">
+                        <input type="file" id="fileElem" name="files[]" multiple accept="image/*,video/*" class="hidden">
+                        <div id="uploadStatus" class="hidden">
+                            <p class="text-white/70">Đang tải lên...</p>
+                        </div>
+                        <div id="error" class="hidden text-red-500 mt-4"></div>
                         
                         <div class="flex justify-center mb-6">
                             <svg class="w-16 h-16 text-[#2F81F7]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -317,9 +321,11 @@
 
         // File upload handling
         const dropZone = document.querySelector('.drop-zone');
-        const fileInput = document.getElementById('fileInput');
+        const fileInput = document.getElementById('fileElem');
         const browseBtn = document.getElementById('browseBtn');
         const uploadForm = document.getElementById('uploadForm');
+        const uploadStatus = document.getElementById('uploadStatus');
+        const errorDiv = document.getElementById('error');
 
         browseBtn.addEventListener('click', () => fileInput.click());
 
@@ -367,6 +373,7 @@
             if (!files.length) return;
 
             showUploadingNotification();
+            errorDiv.classList.add('hidden');
 
             try {
                 const formData = new FormData();
@@ -378,6 +385,10 @@
                     method: 'POST',
                     body: formData
                 });
+
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
 
                 const result = await response.json();
 
@@ -391,8 +402,17 @@
                 }
             } catch (error) {
                 hideUploadingNotification();
-                alert(error.message || 'Có lỗi xảy ra khi tải file.');
+                errorDiv.textContent = error.message || 'Có lỗi xảy ra khi tải file.';
+                errorDiv.classList.remove('hidden');
             }
+        }
+
+        function showUploadingNotification() {
+            uploadStatus.classList.remove('hidden');
+        }
+
+        function hideUploadingNotification() {
+            uploadStatus.classList.add('hidden');
         }
 
         function showUploadResult(result) {
