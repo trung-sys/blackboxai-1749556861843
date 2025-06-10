@@ -7,6 +7,9 @@ error_reporting(0);
 
 header('Content-Type: application/json');
 
+ini_set('log_errors', 1);
+ini_set('error_log', __DIR__ . '/php-error.log');
+
 try {
     if (empty($_FILES['files'])) {
         throw new Exception('Không có file nào được tải lên.');
