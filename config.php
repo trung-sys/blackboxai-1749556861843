@@ -15,7 +15,7 @@ define('TELEGRAM_CHAT_ID', '-1002417998960');
 
 // Error reporting
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
 
 // Increase PHP limits for file uploads
 ini_set('upload_max_filesize', '15M');
