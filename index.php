@@ -386,24 +386,30 @@
                     body: formData
                 });
 
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
+                let result;
+                try {
+                    result = await response.json();
+                } catch (e) {
+                    throw new Error('Lỗi khi xử lý phản hồi từ máy chủ');
                 }
-
-                const result = await response.json();
 
                 hideUploadingNotification();
                 
+                if (!response.ok) {
+                    throw new Error(result.message || 'Lỗi máy chủ');
+                }
+
                 if (result.success) {
                     result.files.forEach(file => showUploadResult(file));
                     uploadForm.reset();
                 } else {
-                    throw new Error(result.message);
+                    throw new Error(result.message || 'Có lỗi xảy ra khi tải file.');
                 }
             } catch (error) {
                 hideUploadingNotification();
-                errorDiv.textContent = error.message || 'Có lỗi xảy ra khi tải file.';
+                errorDiv.textContent = error.message;
                 errorDiv.classList.remove('hidden');
+                console.error('Upload error:', error);
             }
         }
 
