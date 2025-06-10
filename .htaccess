@@ -13,8 +13,8 @@ Options -Indexes
     RemoveHandler .php .phtml .php3 .php4 .php5
     php_flag engine off
     
-    # Allow only image files to be displayed
-    <FilesMatch "\.(?i:jpe?g|png)$">
+    # Allow image and video files to be displayed
+    <FilesMatch "\.(?i:jpe?g|png|gif|webp|mp4|mov|avi|wmv)$">
         Order allow,deny
         Allow from all
     </FilesMatch>
@@ -46,8 +46,18 @@ AddDefaultCharset UTF-8
 
 # Configure PHP settings
 <IfModule mod_php.c>
-    php_value upload_max_filesize 10M
-    php_value post_max_size 10M
-    php_value max_execution_time 30
-    php_value max_input_time 60
+    php_value upload_max_filesize 15M
+    php_value post_max_size 15M
+    php_value max_execution_time 300
+    php_value max_input_time 300
 </IfModule>
+
+# Set proper MIME types
+AddType image/jpeg .jpg .jpeg
+AddType image/png .png
+AddType image/gif .gif
+AddType image/webp .webp
+AddType video/mp4 .mp4
+AddType video/quicktime .mov
+AddType video/x-msvideo .avi
+AddType video/x-ms-wmv .wmv
