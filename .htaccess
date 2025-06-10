@@ -1,0 +1,53 @@
+# Deny access to sensitive files
+<FilesMatch "^(config\.php)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Disable directory listing
+Options -Indexes
+
+# Protect the uploads directory
+<Directory "uploads">
+    # Prevent script execution in uploads directory
+    RemoveHandler .php .phtml .php3 .php4 .php5
+    php_flag engine off
+    
+    # Allow only image files to be displayed
+    <FilesMatch "\.(?i:jpe?g|png)$">
+        Order allow,deny
+        Allow from all
+    </FilesMatch>
+</Directory>
+
+# Enable necessary Apache modules
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # Redirect all requests to HTTPS if not already
+    # RewriteCond %{HTTPS} off
+    # RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+    
+    # Prevent direct access to .php files except index.php
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^(.*)$ index.php [QSA,L]
+</IfModule>
+
+# Set default character set
+AddDefaultCharset UTF-8
+
+# Protect against XSS attacks
+<IfModule mod_headers.c>
+    Header set X-XSS-Protection "1; mode=block"
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+</IfModule>
+
+# Configure PHP settings
+<IfModule mod_php.c>
+    php_value upload_max_filesize 10M
+    php_value post_max_size 10M
+    php_value max_execution_time 30
+    php_value max_input_time 60
+</IfModule>
