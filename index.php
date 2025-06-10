@@ -212,7 +212,7 @@
             <div id="localUpload" class="p-6">
                 <div class="drop-zone w-full p-12 rounded-xl text-center cursor-pointer">
                     <form id="uploadForm" enctype="multipart/form-data">
-                        <input type="file" id="fileElem" name="files[]" multiple accept="image/*,video/*" class="hidden">
+                        <input type="file" id="fileElem" name="files[]" multiple accept="image/jpeg,image/png,image/gif,image/webp,image/svg+xml,image/tiff,image/heif,image/heic,image/avif,video/*" class="hidden">
                         <div id="uploadStatus" class="hidden">
                             <p class="text-white/70">Đang tải lên...</p>
                         </div>
@@ -232,7 +232,8 @@
                         </button>
 
                         <div class="mt-4 text-sm text-white/70">
-                            Giới hạn: Ảnh tối đa 5MB, Video tối đa 15MB
+                            <div>Giới hạn: Ảnh tối đa 5MB, Video tối đa 15MB</div>
+                            <div class="mt-1">Định dạng hỗ trợ: JPEG, PNG, GIF, WEBP, SVG, TIFF, HEIF, HEIC, AVIF</div>
                         </div>
                     </form>
                 </div>
@@ -253,7 +254,8 @@
                         </button>
 
                         <div class="text-sm text-white/70">
-                            Giới hạn: Ảnh tối đa 5MB, Video tối đa 15MB
+                            <div>Giới hạn: Ảnh tối đa 5MB, Video tối đa 15MB</div>
+                            <div class="mt-1">Định dạng hỗ trợ: JPEG, PNG, GIF, WEBP, SVG, TIFF, HEIF, HEIC, AVIF</div>
                         </div>
                     </div>
                 </div>
