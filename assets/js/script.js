@@ -95,7 +95,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function isValidImageUrl(url) {
         try {
             const urlObj = new URL(url);
-            return /\.(jpg|jpeg|png)$/i.test(urlObj.pathname);
+            return /\.(jpg|jpeg|png|gif|webp|svg|tiff|tif|heif|heic|avif)$/i.test(urlObj.pathname);
         } catch {
             return false;
         }
