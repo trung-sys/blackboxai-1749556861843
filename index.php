@@ -133,6 +133,45 @@
             border-color: #2F81F7;
             background: rgba(47, 129, 247, 0.1);
         }
+        @keyframes slideIn {
+            from {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        #uploadingNotification {
+            animation: slideIn 0.3s ease-out forwards;
+            background: linear-gradient(to right, #2F81F7, #2871D9);
+            box-shadow: 0 4px 12px rgba(47, 129, 247, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 16px;
+            z-index: 9999;
+            position: fixed;
+            top: 20px;
+            right: 20px;
+        }
+        #uploadingNotification::before {
+            content: '';
+            width: 20px;
+            height: 20px;
+            border: 3px solid #fff;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            flex-shrink: 0;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body class="text-white">
@@ -249,6 +288,8 @@
             const imageUrl = document.getElementById('imageUrl').value;
             if (!imageUrl) return;
 
+            showUploadingNotification();
+
             try {
                 const formData = new FormData();
                 formData.append('url', imageUrl);
@@ -259,6 +300,8 @@
                 });
 
                 const result = await response.json();
+
+                hideUploadingNotification();
                 
                 if (result.success) {
                     showUploadResult(result);
@@ -267,6 +310,7 @@
                     throw new Error(result.message);
                 }
             } catch (error) {
+                hideUploadingNotification();
                 alert(error.message || 'Có lỗi xảy ra khi tải file.');
             }
         }
@@ -322,6 +366,8 @@
             const files = Array.from(e.target.files);
             if (!files.length) return;
 
+            showUploadingNotification();
+
             try {
                 const formData = new FormData();
                 files.forEach(file => {
@@ -334,6 +380,8 @@
                 });
 
                 const result = await response.json();
+
+                hideUploadingNotification();
                 
                 if (result.success) {
                     result.files.forEach(file => showUploadResult(file));
@@ -342,6 +390,7 @@
                     throw new Error(result.message);
                 }
             } catch (error) {
+                hideUploadingNotification();
                 alert(error.message || 'Có lỗi xảy ra khi tải file.');
             }
         }
@@ -361,12 +410,15 @@
                     </svg>
                     <span class="text-white/90">${result.name || 'File đã tải lên'}</span>
                 </div>
-                <div class="space-y-3">
-                    <div>
-                        <label class="text-sm text-white/70 block mb-1">Link trực tiếp:</label>
-                        <div class="result-link">${result.url}</div>
-                    </div>
+            <div class="space-y-3">
+                <div class="flex items-center space-x-2">
+                    <label class="text-sm text-white/70 block mb-1 flex-1">Link trực tiếp:</label>
+                    <button class="copy-btn bg-[#2F81F7] hover:bg-[#2871D9] text-white px-3 py-1 rounded cursor-pointer text-sm select-none transition" title="Copy link">
+                        Copy
+                    </button>
                 </div>
+                <div class="result-link">${result.url}</div>
+            </div>
             `;
 
             const resultsContainer = document.getElementById('uploadResults');
