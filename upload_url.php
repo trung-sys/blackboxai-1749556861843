@@ -1,6 +1,10 @@
 <?php
 require_once 'config.php';
 
+// Ensure no PHP errors are sent in the JSON response
+ini_set('display_errors', 0);
+error_reporting(0);
+
 header('Content-Type: application/json');
 
 try {
@@ -15,33 +19,57 @@ try {
         throw new Exception('URL không hợp lệ.');
     }
 
-    // Get file info from URL
-    $headers = get_headers($url, 1);
-    if ($headers === false) {
+    // Initialize curl
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($ch, CURLOPT_HEADER, true);
+    curl_setopt($ch, CURLOPT_NOBODY, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    
+    // Get headers
+    $response = curl_exec($ch);
+    if ($response === false) {
         throw new Exception('Không thể truy cập URL.');
     }
 
-    // Get content type and size
-    $contentType = $headers['Content-Type'] ?? '';
-    if (is_array($contentType)) {
-        $contentType = end($contentType);
-    }
+    $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+    $headers = substr($response, 0, $headerSize);
+    $contentType = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+    $contentLength = curl_getinfo($ch, CURLINFO_CONTENT_LENGTH_DOWNLOAD);
     
-    $contentLength = $headers['Content-Length'] ?? '';
-    if (is_array($contentLength)) {
-        $contentLength = end($contentLength);
-    }
-    $contentLength = intval($contentLength);
+    curl_close($ch);
 
     // Check if it's an image or video
-    $isImage = in_array($contentType, ALLOWED_IMAGE_TYPES);
-    $isVideo = in_array($contentType, ALLOWED_VIDEO_TYPES);
+    $isImage = false;
+    $isVideo = false;
+    
+    foreach (ALLOWED_IMAGE_TYPES as $type) {
+        if (strpos($contentType, $type) !== false) {
+            $isImage = true;
+            break;
+        }
+    }
+    
+    if (!$isImage) {
+        foreach (ALLOWED_VIDEO_TYPES as $type) {
+            if (strpos($contentType, $type) !== false) {
+                $isVideo = true;
+                break;
+            }
+        }
+    }
 
     if (!$isImage && !$isVideo) {
         throw new Exception('URL phải trỏ đến file ảnh hoặc video được hỗ trợ.');
     }
 
     // Check file size
+    if ($contentLength <= 0) {
+        throw new Exception('Không thể xác định kích thước file.');
+    }
+    
     if ($isImage && $contentLength > MAX_IMAGE_SIZE) {
         throw new Exception('Kích thước ảnh không được vượt quá 5MB.');
     }
@@ -51,42 +79,47 @@ try {
 
     // Generate filename from URL
     $originalName = basename(parse_url($url, PHP_URL_PATH));
+    if (empty($originalName)) {
+        $originalName = 'downloaded_file';
+    }
+    
     $filename = generateUniqueFilename($originalName);
     $uploadPath = UPLOAD_PATH . $filename;
 
-    // Download and save file
-    $content = file_get_contents($url);
+    // Download file
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    $content = curl_exec($ch);
+    
     if ($content === false) {
         throw new Exception('Không thể tải file từ URL.');
     }
+    
+    curl_close($ch);
 
-    if (!file_put_contents($uploadPath, $content)) {
+    // Save file
+    if (file_put_contents($uploadPath, $content) === false) {
         throw new Exception('Không thể lưu file.');
     }
 
     // Generate public URL
     $fileUrl = getFileUrl($filename);
 
-    // Verify downloaded file
-    $downloadedFile = [
-        'tmp_name' => $uploadPath,
-        'type' => $contentType,
-        'size' => filesize($uploadPath)
-    ];
+    try {
+        // Send Telegram notification
+        $message = "<b>File Mới Được Tải Lên (URL)</b>\n";
+        $message .= "URL gốc: " . $url . "\n";
+        $message .= "Kích thước: " . round($contentLength / 1024 / 1024, 2) . "MB\n";
+        $message .= "Loại: " . ($isImage ? 'Ảnh' : 'Video') . "\n";
+        $message .= "URL mới: " . $fileUrl;
 
-    if (!isValidFileType($downloadedFile)) {
-        unlink($uploadPath);
-        throw new Exception('File tải về không phải là ảnh hoặc video hợp lệ.');
+        sendTelegramNotification($message);
+    } catch (Exception $e) {
+        // Log Telegram error but don't stop the upload process
+        error_log('Telegram notification error: ' . $e->getMessage());
     }
-
-    // Send Telegram notification
-    $message = "<b>File Mới Được Tải Lên (URL)</b>\n";
-    $message .= "URL gốc: " . $url . "\n";
-    $message .= "Kích thước: " . round($contentLength / 1024 / 1024, 2) . "MB\n";
-    $message .= "Loại: " . ($isImage ? 'Ảnh' : 'Video') . "\n";
-    $message .= "URL mới: " . $fileUrl;
-
-    sendTelegramNotification($message);
 
     // Return success response
     echo json_encode([
@@ -95,7 +128,7 @@ try {
         'name' => $originalName,
         'size' => $contentLength,
         'type' => $isImage ? 'image' : 'video'
-    ]);
+    ], JSON_UNESCAPED_UNICODE);
 
 } catch (Exception $e) {
     // Return error response
@@ -103,5 +136,5 @@ try {
     echo json_encode([
         'success' => false,
         'message' => $e->getMessage()
-    ]);
+    ], JSON_UNESCAPED_UNICODE);
 }
