@@ -2,8 +2,24 @@
 // Basic configuration
 define('SITE_URL', 'http://localhost:8000');  // Change this to your actual domain in production
 define('UPLOAD_PATH', 'uploads/');
-define('ALLOWED_IMAGE_TYPES', ['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
-define('ALLOWED_VIDEO_TYPES', ['video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/x-ms-wmv']);
+define('ALLOWED_IMAGE_TYPES', [
+    'image/jpeg',
+    'image/png',
+    'image/gif',
+    'image/webp',
+    'image/svg+xml',
+    'image/tiff',
+    'image/heif',
+    'image/heic',
+    'image/avif'
+]);
+
+define('ALLOWED_VIDEO_TYPES', [
+    'video/mp4',
+    'video/quicktime',
+    'video/x-msvideo',
+    'video/x-ms-wmv'
+]);
 
 // File size limits
 define('MAX_IMAGE_SIZE', 5 * 1024 * 1024);  // 5MB in bytes
