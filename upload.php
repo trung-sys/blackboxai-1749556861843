@@ -1,6 +1,10 @@
 <?php
 require_once 'config.php';
 
+// Ensure no PHP errors are sent in the JSON response
+ini_set('display_errors', 0);
+error_reporting(0);
+
 header('Content-Type: application/json');
 
 try {
@@ -52,14 +56,19 @@ try {
         // Generate public URL
         $fileUrl = getFileUrl($filename);
 
-        // Send Telegram notification
-        $message = "<b>File Mới Được Tải Lên</b>\n";
-        $message .= "Tên file: " . $file['name'] . "\n";
-        $message .= "Kích thước: " . round($file['size'] / 1024 / 1024, 2) . "MB\n";
-        $message .= "Loại: " . ($isImage ? 'Ảnh' : 'Video') . "\n";
-        $message .= "URL: " . $fileUrl;
+        try {
+            // Send Telegram notification
+            $message = "<b>File Mới Được Tải Lên</b>\n";
+            $message .= "Tên file: " . $file['name'] . "\n";
+            $message .= "Kích thước: " . round($file['size'] / 1024 / 1024, 2) . "MB\n";
+            $message .= "Loại: " . ($isImage ? 'Ảnh' : 'Video') . "\n";
+            $message .= "URL: " . $fileUrl;
 
-        sendTelegramNotification($message);
+            sendTelegramNotification($message);
+        } catch (Exception $e) {
+            // Log Telegram error but don't stop the upload process
+            error_log('Telegram notification error: ' . $e->getMessage());
+        }
 
         // Add to results
         $uploadResults[] = [
@@ -75,7 +84,7 @@ try {
     echo json_encode([
         'success' => true,
         'files' => $uploadResults
-    ]);
+    ], JSON_UNESCAPED_UNICODE);
 
 } catch (Exception $e) {
     // Return error response
@@ -83,5 +92,5 @@ try {
     echo json_encode([
         'success' => false,
         'message' => $e->getMessage()
-    ]);
+    ], JSON_UNESCAPED_UNICODE);
 }
