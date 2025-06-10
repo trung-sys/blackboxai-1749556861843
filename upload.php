@@ -1,86 +1,87 @@
 <?php
 require_once 'config.php';
 
-// Set header type to JSON
 header('Content-Type: application/json');
 
-// Check if files were uploaded
-if (empty($_FILES['files'])) {
-    echo json_encode(['error' => 'Không có file nào được tải lên.']);
-    exit;
-}
+try {
+    if (empty($_FILES['files'])) {
+        throw new Exception('Không có file nào được tải lên.');
+    }
 
-$uploadResults = [];
+    $uploadResults = [];
 
-// Loop through each uploaded file
-foreach ($_FILES['files']['tmp_name'] as $key => $tmpName) {
-    $error = $_FILES['files']['error'][$key];
-    
-    // Check for upload errors
-    if ($error !== UPLOAD_ERR_OK) {
-        $errorMessage = match($error) {
-            UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'File quá lớn.',
-            UPLOAD_ERR_PARTIAL => 'File chỉ được tải lên một phần.',
-            UPLOAD_ERR_NO_FILE => 'Không có file nào được tải lên.',
-            default => 'Có lỗi xảy ra khi tải file lên.'
-        };
-        echo json_encode(['error' => $errorMessage]);
-        exit;
-    }
-    
-    // Check file size
-    $fileSize = $_FILES['files']['size'][$key];
-    if ($fileSize > MAX_FILE_SIZE) {
-        echo json_encode(['error' => 'Kích thước file vượt quá giới hạn 10MB.']);
-        exit;
-    }
-    
-    // Validate file type
-    $finfo = finfo_open(FILEINFO_MIME_TYPE);
-    $mimeType = finfo_file($finfo, $tmpName);
-    finfo_close($finfo);
-    
-    if (!in_array($mimeType, ['image/jpeg', 'image/png'])) {
-        echo json_encode(['error' => 'Định dạng file không được hỗ trợ.']);
-        exit;
-    }
-    
-    // Get file extension from mime type
-    $extension = match($mimeType) {
-        'image/jpeg' => 'jpg',
-        'image/png' => 'png',
-        default => ''
-    };
-    
-    // Generate unique filename
-    $uniqueName = uniqid() . '_' . time() . '.' . $extension;
-    $destination = UPLOAD_DIR . $uniqueName;
-    
-    // Ensure upload directory exists
-    if (!is_dir(UPLOAD_DIR)) {
-        if (!mkdir(UPLOAD_DIR, 0755, true)) {
-            echo json_encode(['error' => 'Không thể tạo thư mục lưu trữ.']);
-            exit;
+    foreach ($_FILES['files']['tmp_name'] as $key => $tmpName) {
+        $file = [
+            'name' => $_FILES['files']['name'][$key],
+            'type' => $_FILES['files']['type'][$key],
+            'tmp_name' => $tmpName,
+            'error' => $_FILES['files']['error'][$key],
+            'size' => $_FILES['files']['size'][$key]
+        ];
+
+        // Check for upload errors
+        if ($file['error'] !== UPLOAD_ERR_OK) {
+            throw new Exception('Có lỗi xảy ra khi tải file lên.');
         }
-    }
-    
-    // Move uploaded file
-    if (!move_uploaded_file($tmpName, $destination)) {
-        echo json_encode(['error' => 'Không thể lưu file được tải lên.']);
-        exit;
-    }
-    
-    // Generate URLs for the uploaded file
-    $fileUrl = BASE_URL . '/uploads/' . $uniqueName;
-    
-    $uploadResults[] = [
-        'viewLink' => $fileUrl,
-        'directLink' => $fileUrl,
-        'htmlCode' => '<img src="' . $fileUrl . '" alt="Uploaded Image">',
-        'markdownCode' => '![](' . $fileUrl . ')'
-    ];
-}
 
-// Return the first result (or you could modify the frontend to handle multiple results)
-echo json_encode($uploadResults[0]);
-exit;
+        // Validate file type
+        if (!isValidFileType($file)) {
+            throw new Exception('Chỉ chấp nhận file ảnh (jpg, png, gif, webp) hoặc video (mp4, mov, avi, wmv).');
+        }
+
+        // Check if file is image or video
+        $isImage = isImage($file);
+
+        // Check file size
+        if ($isImage && $file['size'] > MAX_IMAGE_SIZE) {
+            throw new Exception('Kích thước ảnh không được vượt quá 5MB.');
+        }
+        if (!$isImage && $file['size'] > MAX_VIDEO_SIZE) {
+            throw new Exception('Kích thước video không được vượt quá 15MB.');
+        }
+
+        // Generate unique filename
+        $filename = generateUniqueFilename($file['name']);
+        $uploadPath = UPLOAD_PATH . $filename;
+
+        // Move uploaded file
+        if (!move_uploaded_file($file['tmp_name'], $uploadPath)) {
+            throw new Exception('Không thể lưu file.');
+        }
+
+        // Generate public URL
+        $fileUrl = getFileUrl($filename);
+
+        // Send Telegram notification
+        $message = "<b>File Mới Được Tải Lên</b>\n";
+        $message .= "Tên file: " . $file['name'] . "\n";
+        $message .= "Kích thước: " . round($file['size'] / 1024 / 1024, 2) . "MB\n";
+        $message .= "Loại: " . ($isImage ? 'Ảnh' : 'Video') . "\n";
+        $message .= "URL: " . $fileUrl;
+
+        sendTelegramNotification($message);
+
+        // Add to results
+        $uploadResults[] = [
+            'success' => true,
+            'url' => $fileUrl,
+            'name' => $file['name'],
+            'size' => $file['size'],
+            'type' => $isImage ? 'image' : 'video'
+        ];
+    }
+
+    // Return success response
+    echo json_encode([
+        'success' => true,
+        'files' => $uploadResults
+    ]);
+
+} catch (Exception $e) {
+    // Return error response
+    http_response_code(400);
+    echo json_encode([
+        'success' => false,
+        'message' => $e->getMessage()
+    ]);
+}
